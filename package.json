@@ -1,0 +1,48 @@
+{
+  "name": "otx",
+  "version": "1.0.0",
+  "description": "OTX - Optimal Transport eXtreme. Ultra-fast Wasserstein distance solvers for real-time ML and logistics. Nano | Base | Max algorithms.",
+  "type": "module",
+  "main": "src/solvers/otx_max.js",
+  "exports": {
+    ".": "./src/solvers/otx_max.js",
+    "./nano": "./src/solvers/otx_nano.js",
+    "./base": "./src/solvers/otx_base.js",
+    "./max": "./src/solvers/otx_max.js",
+    "./dense": "./src/solvers/sinkhorn_dense.js"
+  },
+  "keywords": [
+    "otx",
+    "optimal-transport",
+    "wasserstein",
+    "sinkhorn",
+    "sliced-wasserstein",
+    "earth-movers-distance",
+    "EMD",
+    "machine-learning",
+    "distribution-matching",
+    "real-time",
+    "logistics"
+  ],
+  "author": "Sergio Lazaro Mondargo",
+  "license": "AGPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/otx-research/otx"
+  },
+  "homepage": "https://github.com/otx-research/otx#readme",
+  "bugs": {
+    "url": "https://github.com/otx-research/otx/issues"
+  },
+  "scripts": {
+    "benchmark": "bun tests/fast_benchmark.js",
+    "test": "bun tests/fast_benchmark.js"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "bun": ">=1.0.0"
+  }
+}
