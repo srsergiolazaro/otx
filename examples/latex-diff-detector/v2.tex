@@ -1,0 +1,34 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+
+\title{Analysis of High-Energy Particles in Quantum Vacuum}
+\author{Dr. Sergio Lazaro}
+
+\begin{document}
+
+\maketitle
+
+\section{Abstract}
+This paper explores the distribution of quantum fluctuations in non-inertial frames. We utilize the Optimal Transport theory to measure the divergence between vacuum states. This version includes updated results.
+
+\section{Introduction}
+Current models of quantum field theory rely on the Bogoliubov transformation to describe particle creation. However, the computational cost of comparing these states is often prohibited for large N systems.
+
+\section{Methodology}
+We define the energy density distribution $\rho(x)$ as a set of discrete points in a 3D grid.
+The OTX algorithm provides a novel way to compute Wasserstein distances in O(N log N) time, making REAL-TIME analysis possible.
+The distance between two states $A$ and $B$ is given by:
+
+\begin{equation}
+W_p(A, B) = \left( \inf_{\gamma \in \Gamma(A, B)} \int_{X \times Y} d(x, y)^p d\gamma(x, y) \right)^{1/p} + \alpha
+\end{equation}
+
+Wait! We added a factor $\alpha$ to the equation to account for dark energy.
+
+\section{Results}
+The results show a clear alignment between predicted vacuum decay and experimental observations. The Wasserstein metric proves more sensitive than Kullback-Leibler divergence for these topological changes.
+
+\section{Conclusion}
+OTX represents a significant leap in computational physics, specifically for distribution matching in high-dimensional manifolds. Future research will explore integration with GPU clusters.
+
+\end{document}

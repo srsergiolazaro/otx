@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>OTX AR Vision Solver v3.1 (Perspective Pro)</title>
+    <style>
+        body {
+            font-family: -apple-system, system-ui, sans-serif;
+            background: #080808;
+            color: #fff;
+            padding: 40px;
+            margin: 0;
+        }
+
+        .app-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #121212;
+            padding: 40px;
+            border-radius: 24px;
+            border: 1px solid #222;
+        }
+
+        h1 {
+            margin: 0;
+            color: #007aff;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .btn {
+            background: #222;
+            color: white;
+            border: 1px solid #333;
+            padding: 18px;
+            border-radius: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn.active {
+            background: #007aff;
+            border-color: #007aff;
+            box-shadow: 0 0 20px rgba(0, 122, 255, 0.3);
+        }
+
+        .views {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        .canvas-wrap {
+            position: relative;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 2px solid #333;
+            background: #000;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        canvas {
+            width: 100%;
+            display: block;
+        }
+
+        #log {
+            margin-top: 30px;
+            padding: 25px;
+            background: #000;
+            border-radius: 14px;
+            font-family: monospace;
+            font-size: 13px;
+            color: #4cd964;
+            border: 1px solid #1a1a1a;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <h1>OTX AR Vision <span
+                style="font-size:12px;background:#007aff;padding:2px 8px;border-radius:4px;color:white;margin-left:10px;">v3.1
+                PERSPECTIVE</span></h1>
+        <p style="color:#666; margin-top:5px;">Alineación de perspectiva avanzada mediante transporte óptimo global.</p>
+
+        <div class="controls">
+            <button id="btnTarget" class="btn active">1. CARGAR DIBUJO (Target)</button>
+            <button id="btnScene" class="btn">2. CARGAR FOTO (Escritorio)</button>
+        </div>
+        <input type="file" id="fileInput" style="display:none" accept="image/*">
+
+        <div class="views">
+            <div class="canvas-wrap"><canvas id="canvasTarget"></canvas></div>
+            <div class="canvas-wrap"><canvas id="canvasScene"></canvas></div>
+        </div>
+
+        <div id="log">SISTEMA INICIALIZADO. CARGA EL DIBUJO PRIMERO.</div>
+    </div>
+
+    <script>
+        function otxMax(a, b, C, sources, targets) {
+            const N = a.length, gridSize = 14, srcGrid = new Map();
+            for (let i = 0; i < N; i++) {
+                const k = `${Math.floor(sources[i][0] * gridSize)},${Math.floor(sources[i][1] * gridSize)}`;
+                if (!srcGrid.has(k)) srcGrid.set(k, []);
+                srcGrid.get(k).push(i);
+            }
+            let total = 0; const mapping = [];
+            for (let j = 0; j < N; j++) {
+                const tx = targets[j][0], ty = targets[j][1];
+                const scx = Math.floor(tx * gridSize), scy = Math.floor(ty * gridSize);
+                let best = -1, minDist = Infinity;
+                for (let dx = -3; dx <= 3; dx++) { // Even wider search for perspective
+                    for (let dy = -3; dy <= 3; dy++) {
+                        const cell = srcGrid.get(`${scx + dx},${scy + dy}`);
+                        if (cell) for (const i of cell) {
+                            const d = C[i][j];
+                            if (d < minDist) { minDist = d; best = i; }
+                        }
+                    }
+                }
+                if (best !== -1) { total += b[j] * minDist; mapping.push({ from: best, to: j, cost: minDist }); }
+            }
+            return { dist: total, mapping };
+        }
+
+        const fileInput = document.getElementById('fileInput');
+        const logEl = document.getElementById('log');
+        let targetData = null, sceneData = null, currentMode = 'target';
+
+        document.getElementById('btnTarget').onclick = () => { currentMode = 'target'; fileInput.click(); };
+        document.getElementById('btnScene').onclick = () => { currentMode = 'scene'; fileInput.click(); };
+
+        fileInput.onchange = async (e) => {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.getElementById(currentMode === 'target' ? 'canvasTarget' : 'canvasScene');
+                    const ctx = canvas.getContext('2d');
+                    const scale = Math.min(1200 / img.width, 1);
+                    canvas.width = img.width * scale; canvas.height = img.height * scale;
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                    const points = extractKeypoints(ctx, canvas, currentMode === 'target' ? 0.8 : 1.5);
+                    if (currentMode === 'target') {
+                        targetData = { points, canvas, ctx };
+                        logEl.innerText = "✅ TARGET CARGADO. AHORA LA FOTO DEL ESCRITORIO.";
+                        document.getElementById('btnTarget').classList.remove('active');
+                        document.getElementById('btnScene').classList.add('active');
+                    } else {
+                        sceneData = { points, canvas, ctx };
+                        solveARV31();
+                    }
+                };
+                img.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        };
+
+        function extractKeypoints(ctx, canvas, sens) {
+            const w = canvas.width, h = canvas.height;
+            const data = ctx.getImageData(0, 0, w, h).data;
+            const points = [];
+            for (let y = 3; y < h - 3; y += 4) {
+                for (let x = 3; x < w - 3; x += 4) {
+                    const idx = (y * w + x) * 4;
+                    const center = data[idx] + data[idx + 1] + data[idx + 2];
+                    const left = data[idx - 12] + data[idx - 11] + data[idx - 10];
+                    const right = data[idx + 12] + data[idx + 13] + data[idx + 14];
+                    const diff = Math.abs(center - left) + Math.abs(center - right);
+                    if (diff > (100 * sens) && center < 350) points.push([x / w, y / h]);
+                }
+            }
+            return points.sort(() => 0.5 - Math.random()).slice(0, 1000);
+        }
+
+        function solveARV31() {
+            if (!targetData || !sceneData) return;
+            const N = Math.max(targetData.points.length, sceneData.points.length);
+            const a = new Float64Array(N).fill(1 / N), b = new Float64Array(N).fill(1 / N);
+            const C = Array.from({ length: N }, () => new Float64Array(N));
+            const pT = [...targetData.points], pS = [...sceneData.points];
+            while (pT.length < N) pT.push([0.5, 0.5]);
+            while (pS.length < N) pS.push([0.5, 0.5]);
+            for (let i = 0; i < N; i++) for (let j = 0; j < N; j++)
+                C[i][j] = Math.sqrt((pT[i][0] - pS[j][0]) ** 2 + (pT[i][1] - pS[j][1]) ** 2);
+
+            const { mapping } = otxMax(a, b, C, pT, pS);
+
+            // Filter quality matches
+            const goodMatches = mapping.filter(m => m.cost < 0.25).filter(m => {
+                let count = 0;
+                for (let o of mapping) if (Math.sqrt((pS[m.to][0] - pS[o.to][0]) ** 2 + (pS[m.to][1] - pS[o.to][1]) ** 2) < 0.08) count++;
+                return count > 5;
+            });
+
+            const ctx = sceneData.ctx, w = sceneData.canvas.width, h = sceneData.canvas.height;
+            ctx.fillStyle = "rgba(0,0,0,0.4)"; ctx.fillRect(0, 0, w, h);
+            ctx.fillStyle = "#4cd964";
+            goodMatches.forEach(m => ctx.fillRect(pS[m.to][0] * w - 1, pS[m.to][1] * h - 1, 3, 3));
+
+            // PERSPECTIVE QUADRILATERAL
+            if (goodMatches.length > 20) {
+                const corners = [[0.05, 0.05], [0.95, 0.05], [0.95, 0.95], [0.05, 0.95]];
+                const projCorners = corners.map(c => {
+                    let sx = 0, sy = 0, wSum = 0;
+                    goodMatches.forEach(m => {
+                        const d = Math.sqrt((pT[m.from][0] - c[0]) ** 2 + (pT[m.from][1] - c[1]) ** 2);
+                        const weight = Math.pow(1 / (d + 0.01), 2);
+                        sx += pS[m.to][0] * weight; sy += pS[m.to][1] * weight; wSum += weight;
+                    });
+                    return [sx / wSum, sy / wSum];
+                });
+
+                ctx.beginPath(); ctx.strokeStyle = "#007aff"; ctx.lineWidth = 4;
+                ctx.fillStyle = "rgba(0,122,255,0.15)";
+                ctx.moveTo(projCorners[0][0] * w, projCorners[0][1] * h);
+                projCorners.forEach((p, i) => if (i > 0) ctx.lineTo(p[0] * w, p[1] * h));
+                ctx.closePath(); ctx.fill(); ctx.stroke();
+
+                // Draw crosshair on the center of the plane
+                const cx = projCorners.reduce((a, b) => a + b[0], 0) / 4;
+                const cy = projCorners.reduce((a, b) => a + b[1], 0) / 4;
+                ctx.strokeStyle = "#fff"; ctx.setLineDash([2, 2]); ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.moveTo(cx * w - 20, cy * h); ctx.lineTo(cx * w + 20, cy * h);
+                ctx.moveTo(cx * w, cy * h - 20); ctx.lineTo(cx * w, cy * h + 20); ctx.stroke();
+            }
+            logEl.innerText = `✅ ALINEACIÓN DE PERSPECTIVA COMPLETADA.\n🚀 ${goodMatches.length} puntos clave vinculados globalmente.`;
+        }
+    </script>
+</body>
+
+</html>

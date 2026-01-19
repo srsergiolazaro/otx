@@ -1,0 +1,33 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+
+\title{Proyecto Alpha: Sistema de Guía Autónoma}
+
+\begin{document}
+
+\maketitle
+
+Este documento describe los principios del Sistema Alpha para la navegación en entornos dinámicos.
+
+\section{Introducción}
+
+El sistema utiliza sensores de profundidad y algoritmos de \textbf{transporte óptimo} para alinear las nubes de puntos capturadas en tiempo real.
+
+\section{Metodología}
+
+Para lograr la precisión necesaria, implementamos:
+\begin{itemize}
+    \item Filtros de Kalman para predicción.
+    \item OTX-Max para el matching de alta densidad.
+    \item Sistemas de respaldo inercial.
+\end{itemize}
+
+\section{Resultados}
+
+Los resultados muestran una reducción del 40\% en el error de localización comparado con métodos tradicionales.
+
+\section{Conclusión}
+
+El uso de OTX permite una navegación más fluida y robusta.
+
+\end{document}
